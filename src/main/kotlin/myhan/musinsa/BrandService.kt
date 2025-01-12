@@ -11,6 +11,7 @@ import myhan.musinsa.dto.CreateProductWithBrandRequestBody
 import myhan.musinsa.dto.UpdateBrandRequestBody
 import myhan.musinsa.recordmapper.BrandRecorderMapper
 import org.jooq.DSLContext
+import org.springframework.dao.DataIntegrityViolationException
 import org.springframework.dao.DuplicateKeyException
 import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Service
@@ -51,11 +52,16 @@ class BrandService(val dsl: DSLContext) {
             }
         }
 
-        val createdBrand = dsl.insertInto(BRAND)
-            .set(BRAND.ID, id)
-            .returning()
-            .fetchOne()!!
-            .into(Brand::class.java)
+        val createdBrand: Brand
+        try {
+            createdBrand = dsl.insertInto(BRAND)
+                .set(BRAND.ID, id)
+                .returning()
+                .fetchOne()!!
+                .into(Brand::class.java)
+        } catch (e: DataIntegrityViolationException) {
+            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Brand $id must not contain small case english letters")
+        }
 
         val createdProductList = productList.map { productParams ->
             val createdProduct = dsl.insertInto(PRODUCT)
